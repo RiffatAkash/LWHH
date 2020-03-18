@@ -6,7 +6,8 @@ class DisFullException extends Exception{}
 interface NetworkStorage
 {
     function connect();
-    function getType();
+    function getName();
+    function report($data);
 }
 
 class MySQLServer implements NetworkStorage
@@ -20,16 +21,26 @@ class MySQLServer implements NetworkStorage
     {
         return "MySQL";
     }
+
+    function report($data)
+    {
+
+    }
 }
 class PostgreSQLServer implements NetworkStorage
 {
     function connect()
     {
-        return true;
+        return $this;
     }
     function getName()
     {
         return "PostgreSQL";
+    }
+
+    function report($data)
+    {
+
     }
 }
 class MSSQLServer implements NetworkStorage
@@ -42,12 +53,18 @@ class MSSQLServer implements NetworkStorage
     {
         return "MSSQL";
     }
+
+    function report($data)
+    {
+
+    }
 }
 
 class ConnectionPool
 {
     private $storage;
-    function __contruct()
+    private $connection;
+    function __construct()
     {
         $this->storage = array();
     }
@@ -61,23 +78,45 @@ class ConnectionPool
         {
             try
             {
-                $storage->connect();
+                $this->connection = $storage->connect();
             }
             catch(ServerLoadException $e)
             {
                 echo $storage->getName()." is facting huge load";
+                $storage->report(array('ip'=>'123.123.123.111','error'=>'load'));
             }
             catch(NetworkException $e)
             {
                 echo $storage->getName()." is having some problem with it's network";
+                $storage->report(array('ip'=>'123.123.123.111','error'=>'network'));
             }
             catch(DisFullException $e)
             {
                 echo $storage->getName()." has it's disk full";
             }
+            if($this->connection)
+            {
+                break;
+            }
         }
+        if($this->connection)
+        {
+            return $this->connection;
+        }
+        return false;
     }
 
 }
+$mysql = new MySQLServer();
+$pgsql = new PostgreSQLServer();
+$mssql = new MSSQLServer();
+
+$cp = new ConnectionPool();
+$cp->addStorage($mysql);
+$cp->addStorage($pgsql);
+$cp->addStorage($mssql);
+
+$connection = $cp->getConnection();
+print_r($connection);
 
 ?>
